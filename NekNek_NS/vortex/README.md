@@ -6,14 +6,16 @@ and vortexu.rea for the upper half).
 boundaries are not exactly over the edge of the first element in the
 overlapping domain. 
 
-2. $ngeom=2$ and $ninter=1$ is sufficient for this case since we are going to
-let the flow develop to the steady-state solution.
+2. ngeom=2 and ninter=1 is sufficient for this case since we are going to
+let the flow develop to steady-state (T=2000).
 
 3. Axial velocity profile along the centerline of the cylinder is output at
 iostep.  The user can extract the most recent velocity profiles:
 
- grep vortex_vz s00000_logfile | awk '{print $4 " " $5}' | tail -1000 > vzldata.out
- grep vortex_vz s00001_logfile | awk '{print $4 " " $5}' | tail -1000 > vzudata.out
+     grep vortex_vz s00000_logfile | awk '{print $4 " " $5}' | tail -1000 > vzldata.out
+ 
+     grep vortex_vz s00001_logfile | awk '{print $4 " " $5}' | tail -1000 > vzudata.out
 
-and then plot them in gnuplot:
- plot "vzldata.out" u 1:2 w l;replot "vzudata.out" u 1:2 w l
+   and then plot them in gnuplot:
+   
+     plot "vzldata.out" u 1:2 w l;replot "vzudata.out" u 1:2 w l
