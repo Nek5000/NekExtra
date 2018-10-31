@@ -1,0 +1,245 @@
+c-----------------------------------------------------------------------
+c
+c     This is the data set for the rotating lid problem of Escudier
+c
+c     Reynolds number determined by setting p2 in the .rea file to, e.g.,
+c     -1492 or -1854.
+c
+c
+c     See, e.g., Sotiropoulos & Ventikos, Int. J. Heat & Fluid Flow 19 (1998)
+c
+c-----------------------------------------------------------------------
+      subroutine uservp (i,j,k,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+      udiff =0.
+      utrans=0.
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf  (i,j,k,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+
+c     Note: this is an acceleration term, NOT a force!
+c     Thus, ffx will subsequently be multiplied by rho(x,t).
+
+
+      ffx = 0.0
+      ffy = 0.0
+      ffz = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (i,j,k,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+      qvol   = 0.0
+      source = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKNEK'
+      common /bcdata/ zstart   ! start of top layer of elements
+
+      n = lx1*ly1*lz1*lelt
+      if (istep.eq.0) then
+         ifxyo = .true.
+         call outpost(vx,vy,vz,pr,t,'   ')
+         ifxyo = .false.
+      endif
+
+      dd   = 0.2**2
+      vmin = 1.e20
+
+      do i=1,n              ! Find min vz near centerline
+         x = xm1(i,1,1,1)
+         y = ym1(i,1,1,1)
+         rr = x*x + y*y
+         if (rr.lt.dd) vmin = min(vmin,vz(i,1,1,1))
+      enddo
+      vmin =  glmin(vmin,1)
+      vmnu =  ms_glmin(vmin,1)
+
+      if (nid_global.eq.0) write(6,1) istep,time,vmin,vmnu
+    1 format(i9,1p3e14.6,' VMIN')
+
+      if (mod(istep,iostep).eq.0.and.istep.gt.0) call get_vz_prof
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc (i,j,k,f,eg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      include 'NEKNEK'
+      integer e,eg,f
+   
+      common /bcdata/ zstart   ! start of top layer of elements
+
+      e = gllel(eg)
+      if (imask(i,j,k,e).eq.0) then
+         mm=lx1
+         az = 0
+         if (z.gt.zstart) az = ((z-zstart)/(2.-zstart))**mm   ! polynomial ramp
+         ux = -y*az
+         uy =  x*az
+         uz = 0.0
+         temp=0.0
+      else      
+         ux = valint(i,j,k,e,1)
+         uy = valint(i,j,k,e,2)
+         uz = valint(i,j,k,e,3)
+         if (nfld_neknek.gt.3) temp = valint(i,j,k,e,ldim+2)
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (i,j,k,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      common /bcdata/ zstart   ! start of top layer of elements
+
+      az = 0
+      if (z.gt.zstart) az = ((z-zstart)/(2.-zstart))**5   ! polynomial ramp
+      ux = -y*az
+      uy =  x*az
+      uz = 0.0
+      temp=0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKNEK'
+
+      n=nelv*8
+      do i=1,n   ! project onto unit circle to machine prec.
+         x=xc(i,1)
+         y=yc(i,1)
+         rr = x*x+y*y
+         if (rr.gt.0.999) then 
+            r=sqrt(rr)
+            xc(i,1) = x/r
+            yc(i,1) = y/r
+         endif
+      enddo
+
+c     SET neknek parameters:
+    
+      ngeom = 2  ! parameter controlling the number of iterations,
+                 ! default:  ngeom=2 (no iterations) 
+                 ! other:    ngeom>2 ( > 1 iteration) 
+
+      ninter = 1 ! parameter order of interface 
+                 ! default:   ninter=1 
+                 ! other:     ninter>1  but only if ngeom > ~2+ninter
+
+      nfld_neknek=ldim+1 ! velocity+pressure 
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+      common /bcdata/ zstart   ! start of top layer of elements
+
+      integer e,f
+
+      f=6            ! Just check for top face with cbc = 'v  '
+      zstart = 0.
+      do e=1,nelv
+         if (cbc(f,e,1).eq.'v  ') zstart = zm1(1,1,1,e)
+      enddo
+      zstart = ms_glmax(zstart,1)
+
+      ntot1 = lx1*ly1*lz1*nelv
+      zmin = glmin(zm1,ntot1)
+      zmax = glmax(zm1,ntot1)
+      if (zmin.lt.0.5) then
+         call rescale_x(zm1,zmin,zmax*1.010)
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+c
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine get_vz_prof
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKNEK'
+      parameter (npts=1000)
+      common /intp_h_vz/ inthvz
+      integer inthvz
+      common /rknn_xyz/ xp,yp,zp
+      real xp(npts),yp(npts),zp(npts)
+      real vzi(npts)
+      real rwk(npts,ldim+1)
+      integer iwk(npts,3)
+      integer icalld
+      save    icalld
+      data    icalld /0/
+      logical iffpt
+c
+      if (icalld.eq.0) then
+        call domain_size(xmn,xmx,ymn,ymx,zmn,zmx)
+        dz = (zmx-zmn)/(npts-1)
+        do i=1,npts
+           xp(i) = 0.
+           yp(i) = 0.
+           zp(i) = zmn + (i-1)*dz
+        enddo
+        call interp_setup(0.,0.,inthvz)
+        icalld = 1
+      else
+      endif
+
+       call 
+     $    interp_nfld(vzi,vz,1,xp,yp,zp,npts,iwk,rwk,npts,.true.,inthvz)
+       
+      if (nio.eq.0) then
+       do i=1,npts
+        write(6,'(i4,i8,1p3e12.4,i6,i6,i6,a10)') 
+     $    idsess,istep,time,zp(i),vzi(i),iwk(i,1),iwk(i,2),iwk(i,3),
+     $     ' vortex_vz'
+       enddo
+      endif
+
+      return
+      end
+c-----------------------------------------------------------------------
