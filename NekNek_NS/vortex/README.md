@@ -9,7 +9,9 @@ overlapping domain.
 2. ngeom=2 and ninter=1 is sufficient for this case since we are going to
 let the flow develop to steady-state (T=2000).
 
-3. Axial velocity profile along the centerline of the cylinder is output at
+3. Make sure "nsessmax >= 2" in SIZE, and run as neknekb vortexl vortexu 2 2
+
+4. Axial velocity profile along the centerline of the cylinder is output at
 iostep.  The user can extract the most recent velocity profiles:
 
      grep vortex_vz s00000_logfile | awk '{print $4 " " $5}' | tail -1000 > vzldata.out
