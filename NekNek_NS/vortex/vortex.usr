@@ -79,7 +79,7 @@ c-----------------------------------------------------------------------
          if (rr.lt.dd) vmin = min(vmin,vz(i,1,1,1))
       enddo
       vmin =  glmin(vmin,1)
-      vmnu =  ms_glmin(vmin,1)
+      vmnu =  glmin_ms(vmin,1)
 
       if (nid_global.eq.0) write(6,1) istep,time,vmin,vmnu
     1 format(i9,1p3e14.6,' VMIN')
@@ -180,7 +180,7 @@ c-----------------------------------------------------------------------
       do e=1,nelv
          if (cbc(f,e,1).eq.'v  ') zstart = zm1(1,1,1,e)
       enddo
-      zstart = ms_glmax(zstart,1)
+      zstart = glmax_ms(zstart,1)
 
       ntot1 = lx1*ly1*lz1*nelv
       zmin = glmin(zm1,ntot1)
