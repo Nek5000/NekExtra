@@ -51,10 +51,6 @@ c     Prescribe mesh motion
 
       call my_mesh_velocity
 
-c      if (mod(istep,20).eq.0) call outpost(vx,vy,vz,pr,t,'   ')
-c      if (istep.eq.1) call outpost(vx,vy,vz,pr,t,'   ')
-c      call outpost(vx,vy,vz,pr,t,'   ')
-
       return
       end
 c-----------------------------------------------------------------------
@@ -121,6 +117,8 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       include 'NEKUSE'
+      common /irotorient/ irotdir
+      integer irotdir
       parameter(nxyz = lx1*ly1*lz1)
 
       parameter(lt=lx1*ly1*lz1*lelt)
@@ -133,49 +131,40 @@ c-----------------------------------------------------------------------
       ifxyo    = .true.     ! ensure output of geometry
       ifusermv = .true.     ! define our own mesh velocity
       call fix_geom
-       xmax = glamax(xm1,lx1*ly1*lz1*nelv)
-       if (idsess.ne.0) then
+      xmax_ms = glamax_ms(xm1,lx1*ly1*lz1*nelv)
+      xmax = glmax(xm1,lx1*ly1*lz1*nelv)
+      if (xmax.lt.19.) then
        xmax = glmax(xm1,lx1*ly1*lz1*nelv)
        cirloc = 2.
-       if (xmax.lt.1) cirloc = -2.
-        do ie=1,nelv
-        do ifac=1,2*ldim
-         if (cbc(ifac,ie,1).eq.'int') then
-           call facind (i0,i1,j0,j1,k0,k1,nx1,ny1,nz1,ifac)
-           do k=k0,k1
-           do j=j0,j1
-           do i=i0,i1
-             xv = xm1(i,j,k,ie)-cirloc
-             yv = ym1(i,j,k,ie)
-             rv = sqrt(xv**2 + yv**2)
-             tv = atan2(yv,xv)
-             ox(i,j,k,ie) = cirloc + 2.5*cos(tv)
-             oy(i,j,k,ie) = 2.5*sin(tv)
-           enddo
-           enddo
-           enddo
+       irotdir = 1
+       if (xmax.lt.1) then
+        cirloc = -2.
+        irotdir = -1
+       endif
+       do ie=1,nelv
+       do ifac=1,2*ldim
+        if (cbc(ifac,ie,1).eq.'int') then
+          call facind (i0,i1,j0,j1,k0,k1,nx1,ny1,nz1,ifac)
+          do k=k0,k1
+          do j=j0,j1
+          do i=i0,i1
+            xv = xm1(i,j,k,ie)-cirloc
+            yv = ym1(i,j,k,ie)
+            rv = sqrt(xv**2 + yv**2)
+            tv = atan2(yv,xv)
+            ox(i,j,k,ie) = cirloc + 2.5*cos(tv)
+            oy(i,j,k,ie) = 2.5*sin(tv)
+          enddo
+          enddo
+          enddo
          endif
-        enddo
-        enddo
+       enddo
+       enddo
      
-c      call opsub3(dx,dy,dz,ox,oy,oz,xm1,ym1,zm1)
-c      call my_mv_mesh(dx,dy,dz)
-c      call opadd2(xm1,ym1,zm1,dx,dy,dz)
-
-
       endif
 
-      if (idsess.eq.0) then
-        do ie=1,nelv
-        do ifac=1,2*ldim
-c         if (cbc(ifac,ie,1).ne.'int') cbc(ifac,ie,1) = 'O  '
-        enddo
-        enddo
-      endif
-
-
-      call multimesh_create ! initialization for multimesh 
-      ifxyo = .true.
+c      write(6,*) idsess,irotdir,'k10c'
+c      call exitt
 
       return
       end
@@ -205,8 +194,9 @@ c-----------------------------------------------------------------------
       subroutine u_meshv(x,y,wx,wy,time)
       include 'SIZE'
       real rpm
+      common /irotorient/ irotdir
+      integer irotdir
       
-
       one          = 1.0
       pi           = 4.0*atan(one)
       rpm          = 1.     !1 revolution per minute
@@ -216,8 +206,10 @@ c-----------------------------------------------------------------------
       yc = 0.
       xc = -cirloc
       fac = 1.
-      if (idsess.eq.2) xc = cirloc
-      if (idsess.eq.2) fac = -1.
+      if (irotdir.eq.1) then
+       xc = cirloc
+       fac = -1.
+      endif
       rv = sqrt((x-xc)**2 + (y-yc)**2)
       thv = atan2(y-yc,x-xc)
       if (thv.lt.0) thv = thv + 2.*pi
