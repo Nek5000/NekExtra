@@ -1,0 +1,31 @@
+
+This directory contains three examples demonstrating convergence to 
+Kovasznay's exact solution for the 2D steady Stokes and Navier-Stokes
+equations.  A brief description is provided in kovasznay.pdf.
+
+The cases are the following:
+
+k40_std -- Re=40: time-marching
+k40     -- Re=40: time-marching with user-provided evaluation of nonlinear terms
+k00     -- Re= 0: steady-state Uzawa scheme (works only for PN-PN-2 formulation).
+
+Here, time-marching implies that Nek5000 uses time advancement to evolve the
+solution to the steady state.  Starting with an initial condition of (u,v)=(0,0),
+the solution reaches the target discretization error in about 4 to 5 convective
+time units.  Here, the solution convergenes on a convective, rather than diffusive,
+timescale because the error is advected out of the domain boundary.  Typical error
+levels are ~ 1.e-5--1.e-6 for N=7 (i.e., lx1=8) and ~ 1.e-12 for N=17 (lx1=18).
+
+To see the error, just type
+
+grep err logfile
+
+Time is given in column 7 and errors (H1, H1-seminorm, L2, and L_infinity)
+are given in columns 3--6.  Polynomial order is in column 2 and timestep
+number is in column 1.
+
+To run different polynomial orders, simply edit SIZE and change lx1, following
+standard Nek5000 practice.   Note, because of CFL stability considerations,
+you may have to reduce DT (param 12 in the .rea file) if you significantly
+increase lx1 for the time-marching cases. 
+
